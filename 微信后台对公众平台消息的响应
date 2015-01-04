@@ -1,0 +1,257 @@
+<?php
+define("TOKEN", "weixin");
+
+$wechatObj = new wechatCallbackapiTest();
+if (!isset($_GET['echostr'])) {
+    $wechatObj->responseMsg();
+}else{
+    $wechatObj->valid();
+}
+
+class wechatCallbackapiTest
+{
+    public function valid()
+    {
+        $echoStr = $_GET["echostr"];
+        if($this->checkSignature()){
+            echo $echoStr;
+            exit;
+        }
+    }
+
+    private function checkSignature()
+    {
+        $signature = $_GET["signature"];
+        $timestamp = $_GET["timestamp"];
+        $nonce = $_GET["nonce"];
+
+        $token = TOKEN;
+        $tmpArr = array($token, $timestamp, $nonce);
+        sort($tmpArr);
+        $tmpStr = implode( $tmpArr );
+        $tmpStr = sha1( $tmpStr );
+
+        if( $tmpStr == $signature ){
+            return true;
+        }else{
+            return false;
+        }
+    }
+
+    public function responseMsg()
+    {
+        $postStr = $GLOBALS["HTTP_RAW_POST_DATA"];
+        if (!empty($postStr)){
+            $postObj = simplexml_load_string($postStr, 'SimpleXMLElement', LIBXML_NOCDATA);
+            $RX_TYPE = trim($postObj->MsgType);
+
+            switch ($RX_TYPE)
+            {
+                case "text":
+                    $resultStr = $this->receiveText($postObj);
+                    break;
+                case "event":
+                    $resultStr = $this->receiveEvent($postObj);
+                    break;
+                default:
+                    $resultStr = "";
+                    break;
+            }
+            echo $resultStr;
+        }else {
+            echo "";
+            exit;
+        }
+    }
+
+    function getKuaidi100Express($companyEn,$number){
+    	$key="fe6d975c41d0b019";       //你申请的key
+    	$url="http://api.kuaidi100.com/api?id=".$key."&com=".$companyEn."&nu=".$number."&show=0&muti=1&order=asc";
+
+    	$ch=curl_init();
+    	curl_setopt($ch, CURLOPT_URL, $url);
+    	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    	$output=curl_exec($ch);
+
+    	curl_close($ch);
+
+    	$AllInfo=json_decode($output,true);
+
+    	if ($AllInfo['message']!="") {
+    		 return $AllInfo['message'];
+        }else{
+        	$result="";
+        	foreach ($AllInfo['data'] as $singleStep) {
+        		$result.=$singleStep['time']."".$singleStep['context']."<br />";
+        	}
+        	return $result;
+        }
+    }
+
+
+    private function receiveText($object)
+    {
+        $funcFlag = 0;
+        $keyword=$object->Content;
+        $kuaidi=explode(" ", $keyword);
+        if($keyword)
+            {
+                $msgType = "text";
+                 if ($kuaidi[0]==韵达||$kuaidi[0]==申通||$kuaidi[0]==圆通||$kuaidi[0]==中通||$kuaidi[0]==顺丰) {
+                 	   if ($kuaidi[0]==韵达) {
+                 		     $contentStr=$this->getKuaidi100Express(yunda,$kuaidi[1]);
+                 	   }elseif ($kuaidi[0]==申通) {
+                 	         $contentStr=$this->getKuaidi100Express(shentong,$kuaidi[1]);
+                 	   }elseif ($kuaidi[0]==圆通) {
+                 	         $contentStr=$this->getKuaidi100Express(yuantong,$kuaidi[1]);
+                 	   }elseif ($kuaidi[0]==中通) {
+                 	         $contentStr=$this->getKuaidi100Express(zhongtong,$kuaidi[1]);
+                 	   }elseif ($kuaidi[0]==顺丰) {
+                 	         $contentStr=$this->getKuaidi100Express(shunfeng,$kuaidi[1]);
+                 	   }
+                 }elseif ($keyword==查快递) {
+                       $contentStr="查快递请输入快递公司名称+单号，例如：\n圆通 2186367481(请在中间加个空格)";
+                }elseif ($keyword==天气) {
+                	   $contentStr="查天气请直接输入城市名，例如\n南京";
+                }elseif ($keyword==关注回复||$keyword==？||$keyword==目录||$keyword==菜单||$keyword==首页) {
+                	$contentStr="我是小猪猪，我回来啦！\n输入【目录】随时查此菜单\n———————————\n如果没有及时回复，那小猪猪一定是在赶来回复你的路上哟！\n以下功能点击即可使用
+                <a href=\"http://wap.weixiaoxin.com/AllShow/cateshow/?wid=19297\">首页</a> <a href=\"http://wap.weixiaoxin.com/Comment/?wid=19297\">树洞</a> 
+                <a href=\"http://wap.weixiaoxin.com//Baoming/index/?wid=19297&tid=1126\">使用平台</a>\n以下功能回复即可使用\n
+【天气】【查快递】\n因为最近平台在开发一键查询成绩系统，其他功能以后会陆续开放，欢迎向平台提出你的宝贵意见";
+                }
+                else{
+                
+                  
+                                  $getcity=$keyword;
+                                  $login_url        =    'http://w.ibtf.net/?city='.$getcity;
+
+                                  
+
+                                  $ch = curl_init($login_url) ;  
+                                  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1) ; // 获取数据返回  
+                                  curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1) ; // 在启用 CURLOPT_RETURNTRANSFER 时候将获取数据返回  
+                                  $str = curl_exec($ch) ;
+                //preg_match("/(.*?)<br>/", $str,$arr);
+                
+                                   $mczz="/(.*?)<br>(.*?)<img .*?>(.*?)<br>(.*?)<img .*?>(.*?)<br>(.*)<img .*?>(.*?)<br>/";
+
+                                   preg_match($mczz, $str,$arr);
+                                  $contentstr="【".$arr[1]."】"."\r\n".$arr[2]."\r".$arr[3]."\r\n".$arr[4]."\r".$arr[5]."\r\n".$arr[6]."\r".$arr[7];
+                                  if($contentstr!="【】\r\n\r\r\n\r\r\n\r"){
+                                           $contentStr=$contentstr;
+                                  }else{
+                                            $contentStr="查天气请输入城市名，例如：\n南京\n查快递请输入快递公司名称+单号，例如：\n圆通 2186367481(请在中间加个空格)";
+                                        } 
+                    }
+            }
+        $resultStr = $this->transmitText($object, $contentStr, $funcFlag);
+        return $resultStr;
+    }
+    
+
+    private function receiveEvent($object)
+    {
+        $contentStr = "";
+        switch ($object->Event)
+        {
+            case "subscribe":
+                $contentStr = "欢迎关注南审助手\n我是小猪猪，我回来啦！\n输入【目录】随时查此菜单\n———————————\n如果没有及时回复，那小猪猪一定是在赶来回复你的路上哟！\n以下功能点击即可使用
+                <a href=\"http://wap.weixiaoxin.com/AllShow/cateshow/?wid=19297\">首页</a> <a href=\"http://wap.weixiaoxin.com/Comment/?wid=19297\">树洞</a> 
+                <a href=\"http://wap.weixiaoxin.com//Baoming/index/?wid=19297&tid=1126\">使用平台</a>\n以下功能回复即可使用\n
+【天气】【查快递】\n因为最近平台在开发一键查询成绩系统，其他功能以后会陆续开放，欢迎向平台提出你的宝贵意见";
+            case "unsubscribe":
+                break;
+            case "CLICK":
+                switch ($object->EventKey)
+                {
+                    case "company":
+                        $openid=$object->FromUserName;
+                       
+                         $mysqli=new mysqli("localhost", "root", "22892602fa", "jikeanswer");
+                        $mysqli->query("SET NAMES UTF8");
+                        $sql = "SELECT username,password FROM user WHERE openid='{$openid}'";
+                        $result = $mysqli->query($sql);
+
+                        if (list($username,$password) = $result->fetch_row()) {
+                               
+                                 
+                                
+                       	        $login_url        =    "http://nsbound.boardcn.com?username={$username}&password={$password}";
+                                $ch = curl_init($login_url) ;  
+                                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1) ; // 获取数据返回  
+                                curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1) ; // 在启用 CURLOPT_RETURNTRANSFER 时候将获取数据返回  
+                                $str = curl_exec($ch) ;
+                                   
+                             $contentStr=$str;
+                             
+                       }else{
+                        	
+                              $contentStr="你还没有绑定哦！<a href=\"http://bound.boardcn.com?openid={$openid}\">点我进行绑定</a> " ;              
+                         //$contentStr='000';
+                        }
+                        break;
+                    default:
+                        $contentStr="啦啦啦";
+                        break;
+                }
+                break;
+            default:
+                break;      
+
+        }
+        if (is_array($contentStr)){
+            $resultStr = $this->transmitNews($object, $contentStr);
+        }else{
+            $resultStr = $this->transmitText($object, $contentStr);
+        }
+        return $resultStr;
+    }
+
+    private function transmitText($object, $content, $funcFlag = 0)
+    {
+        $textTpl = "<xml>
+<ToUserName><![CDATA[%s]]></ToUserName>
+<FromUserName><![CDATA[%s]]></FromUserName>
+<CreateTime>%s</CreateTime>
+<MsgType><![CDATA[text]]></MsgType>
+<Content><![CDATA[%s]]></Content>
+<FuncFlag>%d</FuncFlag>
+</xml>";
+        $resultStr = sprintf($textTpl, $object->FromUserName, $object->ToUserName, time(), $content, $funcFlag);
+        return $resultStr;
+    }
+
+    private function transmitNews($object, $arr_item, $funcFlag = 0)
+    {
+        //首条标题28字，其他标题39字
+        if(!is_array($arr_item))
+            return;
+
+        $itemTpl = "    <item>
+        <Title><![CDATA[%s]]></Title>
+        <Description><![CDATA[%s]]></Description>
+        <PicUrl><![CDATA[%s]]></PicUrl>
+        <Url><![CDATA[%s]]></Url>
+    </item>
+";
+        $item_str = "";
+        foreach ($arr_item as $item)
+            $item_str .= sprintf($itemTpl, $item['Title'], $item['Description'], $item['PicUrl'], $item['Url']);
+
+        $newsTpl = "<xml>
+<ToUserName><![CDATA[%s]]></ToUserName>
+<FromUserName><![CDATA[%s]]></FromUserName>
+<CreateTime>%s</CreateTime>
+<MsgType><![CDATA[news]]></MsgType>
+<Content><![CDATA[]]></Content>
+<ArticleCount>%s</ArticleCount>
+<Articles>
+$item_str</Articles>
+<FuncFlag>%s</FuncFlag>
+</xml>";
+
+        $resultStr = sprintf($newsTpl, $object->FromUserName, $object->ToUserName, time(), count($arr_item), $funcFlag);
+        return $resultStr;
+    }
+}
+?>
